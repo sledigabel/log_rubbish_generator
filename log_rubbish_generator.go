@@ -45,7 +45,11 @@ func send_over_time(num_msgs int, dur time.Duration,text []string) {
     num_msgs_interval = num_msgs*interval_period/total_in_sec
     
     // now we have a rate per period, we can now start sending!
-    fmt.Printf("rate = %d msgs/%d seconds\n",num_msgs_interval,interval_period)
+    if interval_period != 1 {
+        fmt.Printf("rate = %d msgs/%d seconds\n",num_msgs_interval,interval_period)
+    } else {
+        fmt.Printf("rate = %d msgs/s\n",num_msgs_interval)
+    }
     
     // start the tick now!
     start_time := time.Now()
@@ -58,7 +62,7 @@ func send_over_time(num_msgs int, dur time.Duration,text []string) {
         }
         // pretty progress bar
         progress = int(20*count/num_msgs)
-        fmt.Printf("\r[%s%s] -- %s                 ",strings.Repeat("*",progress),strings.Repeat(" ",20-progress),time.Since(start_time).String())
+        fmt.Printf("\r[%s%s] --\t%s\t-- %d",strings.Repeat("*",progress),strings.Repeat(" ",20-progress),strings.Split(time.Since(start_time).String(),".")[0]+"s",count)
         // now we just wait
         for ;int(time.Since(in_between).Seconds()) < interval_period; {
             // .1s should be enough so we don't lose too much time waiting and limit the processing overhead
@@ -108,6 +112,4 @@ func main() {
     tempo,_ := time.ParseDuration("2m")
     send_over_time(10000,tempo,ipsum)
     
-    
-
 }
