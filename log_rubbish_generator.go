@@ -32,18 +32,17 @@ func gen_rubbish (length int,blah []string) string {
 
 }
 
-func send_over_time(num_msgs int, dur Duration,text []string) {
+func send_over_time(num_msgs int, dur time.Duration,text []string) {
 
-    total_in_sec := dur.Seconds()   // total num of seconds for the duration
+    total_in_sec := int(dur.Seconds())   // total num of seconds for the duration
     interval_period := 1            // in seconds
     num_msgs_interval := num_msgs   // number of messages per interval -- init
-    interval := 0
     
     // performing the dance to figure out what the "ideal" interval should be to send at least one message, starting with a 1 sec interval.
-    for ;num_msgs*interval_period/total_in_sec < 1; {
-        interval_period += 5       // we increase by 30s every time we find the interval is too short.
+    for i:=1;num_msgs*interval_period/total_in_sec < 1;i++ {
+        interval_period = i*5       // we increase by 30s every time we find the interval is too short.
     }
-    num_msgs_interval := num_msgs*interval_period/total_in_sec
+    num_msgs_interval = num_msgs*interval_period/total_in_sec
     
     // now we have a rate per period, we can now start sending!
     fmt.Printf("rate = %d msgs/%d seconds\n",num_msgs_interval,interval_period)
@@ -59,9 +58,9 @@ func send_over_time(num_msgs int, dur Duration,text []string) {
         }
         // pretty progress bar
         progress = int(20*count/num_msgs)
-        fmt.Printf("\r[%s%s] -- %s",strings.Repeat("*",progress),strings.Repeat("*",20-progress),time.Since(start_time).String())
+        fmt.Printf("\r[%s%s] -- %s                 ",strings.Repeat("*",progress),strings.Repeat(" ",20-progress),time.Since(start_time).String())
         // now we just wait
-        for ;time.Since(now).Seconds < interval_period; {
+        for ;int(time.Since(in_between).Seconds()) < interval_period; {
             // .1s should be enough so we don't lose too much time waiting and limit the processing overhead
             time.Sleep(time.Millisecond*100)
         }
@@ -106,8 +105,8 @@ func main() {
     //fmt.Println("%d",elapsed)
     } */
     
-    tempo,_ = time.ParseDuration("5m")
-    send_over_time(100000,tempoi,ipsum)
+    tempo,_ := time.ParseDuration("2m")
+    send_over_time(10000,tempo,ipsum)
     
     
 
