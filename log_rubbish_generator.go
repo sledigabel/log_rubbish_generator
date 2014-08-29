@@ -10,7 +10,8 @@ import (
     "github.com/op/go-logging"
 )
 
-var batchSize = 100
+var C__batchSize = 100
+var C__DEBUG = true
 
 var log = logging.MustGetLogger("test")
 // setting rand
@@ -31,6 +32,44 @@ func gen_rubbish (length int,blah []string) string {
 
 }
 
+func send_over_time(num_msgs int, dur Duration,text []string) {
+
+    total_in_sec := dur.Seconds()   // total num of seconds for the duration
+    interval_period := 1            // in seconds
+    num_msgs_interval := num_msgs   // number of messages per interval -- init
+    interval := 0
+    
+    // performing the dance to figure out what the "ideal" interval should be to send at least one message, starting with a 1 sec interval.
+    for ;num_msgs*interval_period/total_in_sec < 1; {
+        interval_period += 5       // we increase by 30s every time we find the interval is too short.
+    }
+    num_msgs_interval := num_msgs*interval_period/total_in_sec
+    
+    // now we have a rate per period, we can now start sending!
+    fmt.Printf("rate = %d msgs/%d seconds\n",num_msgs_interval,interval_period)
+    
+    // start the tick now!
+    start_time := time.Now()
+    in_between := time.Now()
+    progress := 0
+    for count := 0; count < num_msgs; count += num_msgs_interval {
+        in_between = time.Now()
+        for i := 0; i< num_msgs_interval; i++ {
+            log.Notice(gen_rubbish(10,text))
+        }
+        // pretty progress bar
+        progress = int(20*count/num_msgs)
+        fmt.Printf("\r[%s%s] -- %s",strings.Repeat("*",progress),strings.Repeat("*",20-progress),time.Since(start_time).String())
+        // now we just wait
+        for ;time.Since(now).Seconds < interval_period; {
+            // .1s should be enough so we don't lose too much time waiting and limit the processing overhead
+            time.Sleep(time.Millisecond*100)
+        }
+    }
+    fmt.Printf("Sent %d messages in %s\n",num_msgs,time.Since(start_time).String())
+    
+}
+
 
 func main() {
     // Customize the output format
@@ -49,7 +88,7 @@ func main() {
     //logging.SetBackend(logBackend, syslogBackend)
     logging.SetBackend(syslogBackend)
 
-    now := time.Now()
+    /* now := time.Now()
     count := 0
     for ;; {
         for i := 0; i< batchSize; i++ {
@@ -65,7 +104,10 @@ func main() {
     //time.Sleep(5*time.Second)
     //elapsed = time.Since(now)
     //fmt.Println("%d",elapsed)
-    }
+    } */
+    
+    tempo,_ = time.ParseDuration("5m")
+    send_over_time(100000,tempoi,ipsum)
     
     
 
