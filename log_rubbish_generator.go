@@ -1,12 +1,14 @@
 package main
 
 import (
-    // stdlog "log"
-    // "os"
     "fmt"
+    "flag"
+    "io/ioutil"
+    "os"
     "strings"
     "math/rand"
     "time"
+    "log/syslog"
     "github.com/op/go-logging"
 )
 
@@ -27,16 +29,21 @@ func gen_rubbish (length int,blah []string) string {
     for i := 0;i<length;i++ {
         str = str+" "+blah[r.Int()%len(blah)]
     }
-    
     return str
-
 }
+
+func pick_log (blah []string) string {
+    return blah[r.Int()%len(blah)]
+}
+
 
 func send_over_time(num_msgs int, dur time.Duration,text []string) {
 
     total_in_sec := int(dur.Seconds())   // total num of seconds for the duration
     interval_period := 1            // in seconds
     num_msgs_interval := num_msgs   // number of messages per interval -- init
+
+    need_rubbish := ( len(text) == 0 )
     
     // performing the dance to figure out what the "ideal" interval should be to send at least one message, starting with a 1 sec interval.
     for i:=1;num_msgs*interval_period/total_in_sec < 1;i++ {
@@ -55,10 +62,16 @@ func send_over_time(num_msgs int, dur time.Duration,text []string) {
     start_time := time.Now()
     in_between := time.Now()
     progress := 0
+    
     for count := 0; count < num_msgs; count += num_msgs_interval {
         in_between = time.Now()
         for i := 0; i< num_msgs_interval; i++ {
-            log.Notice(gen_rubbish(10,text))
+            if need_rubbish {
+                log.Notice(gen_rubbish(10,ipsum))
+            } else{
+                // traditional logging
+                log.Notice(pick_log(text))
+            }
         }
         // pretty progress bar
         progress = int(20*count/num_msgs)
@@ -73,6 +86,12 @@ func send_over_time(num_msgs int, dur time.Duration,text []string) {
     
 }
 
+func usage() {
+    
+    fmt.Printf("Usage: %s [--time=<duration>] [--num=<number>] [--file=<input_file>]\n",os.Args[0])
+    flag.PrintDefaults()
+    os.Exit(1)
+}
 
 func main() {
     // Customize the output format
@@ -82,7 +101,7 @@ func main() {
     //logBackend := logging.NewLogBackend(os.Stderr, "", stdlog.LstdFlags|stdlog.Lshortfile)
     //logBackend.Color = true
 
-    syslogBackend, err := logging.NewSyslogBackend("")
+    syslogBackend, err := logging.NewSyslogBackendPriority("",syslog.LOG_LOCAL5)
     if err != nil {
         log.Fatal(err)
     }
@@ -91,25 +110,36 @@ func main() {
     //logging.SetBackend(logBackend, syslogBackend)
     logging.SetBackend(syslogBackend)
 
-    /* now := time.Now()
-    count := 0
-    for ;; {
-        for i := 0; i< batchSize; i++ {
-            log.Notice(gen_rubbish(10,ipsum)) 
-        }
-        count += 100
-        elapsed := time.Since(now).Seconds()
-        if elapsed > 5 {
-            fmt.Printf("generated %d in %d seconds\n",count,int(elapsed))
-            now = time.Now()
-            count = 0
-        }
-    //time.Sleep(5*time.Second)
-    //elapsed = time.Since(now)
-    //fmt.Println("%d",elapsed)
-    } */
+    param_help := flag.Bool("help",false,"prints usage")
+    param_tempo := flag.String("time","5m","Time lapse to send the logs")
+    param_num := flag.Int("num",100000,"Number of messages to send")
+    param_ifile := flag.String("file","","Input file with logs to send")
+    param_groot := flag.Bool("groot",false,"I AM GROOT")
     
-    tempo,_ := time.ParseDuration("2m")
-    send_over_time(10000,tempo,ipsum)
+    flag.Usage = usage
+    flag.Parse()
+    
+    var logs []string
+
+    if *param_groot {
+        fmt.Println("I AM GROOT !!!")
+    }
+    if *param_help {
+        usage()
+    }
+    if ( *param_ifile != "" ){
+        // reading the file and random logs
+        content, err := ioutil.ReadFile(*param_ifile)
+        if err != nil {
+            //Do something
+            fmt.Println(err)
+            os.Exit(5)
+        }
+        logs = strings.Split(string(content), "\n")
+    }
+    
+    tempo,_ := time.ParseDuration(*param_tempo)
+    fmt.Printf("tempo: %s\n",tempo)
+    send_over_time(*param_num,tempo,logs)
     
 }
