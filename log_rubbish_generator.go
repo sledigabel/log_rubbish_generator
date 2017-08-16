@@ -1,10 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"github.com/op/go-logging"
-	"io/ioutil"
+	// "io/ioutil"
 	"log/syslog"
 	"math/rand"
 	"os"
@@ -16,6 +17,9 @@ var log = logging.MustGetLogger("test")
 
 // setting rand
 var r = rand.New(rand.NewSource(time.Now().UnixNano()))
+
+// file string header == YYYY
+var tHeader = time.Now().Format("2006")
 
 // for dummy text
 var ipsum = strings.Split("Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.", " ")
@@ -91,13 +95,37 @@ func usage() {
 	os.Exit(1)
 }
 
+func multiLineSplit(data []byte, atEOF bool) (advance int, token []byte, err error) {
+
+    // Return nothing if at end of file and no data passed
+    if atEOF && len(data) == 0 {
+        return 0, nil, nil
+    }
+
+    // Find the index of the input of a newline followed by a
+    // pound sign.
+    if i := strings.Index(string(data), fmt.Sprintf("\n%s",tHeader)); i >= 0 {
+        return i + 1, data[0:i], nil
+    }
+
+    // If at end of file with data return the data
+    if atEOF {
+        return len(data), data, nil
+    }
+
+    return
+}
+
+
 func main() {
 
 	param_help := flag.Bool("help", false, "prints usage")
 	param_tempo := flag.String("time", "5m", "Time lapse to send the logs")
 	param_num := flag.Int("num", 100000, "Number of messages to send")
-	param_ifile := flag.String("file", "", "Input file with logs to send")
+	param_ifile := flag.String("ifile", "", "Input file with logs to send")
 	param_ofile := flag.String("ofile", "", "Output file to send logs to")
+	param_multiline := flag.Bool("ml", false, "Reads as multiline")
+	param_ltrim := flag.Int("ltrim", 0, "Number of fields to trim on the left")
 
 	flag.Usage = usage
 	flag.Parse()
@@ -109,19 +137,31 @@ func main() {
 	}
 	if len(*param_ifile) != 0 {
 		// reading the file and random logs
-		content, err := ioutil.ReadFile(*param_ifile)
+		inFile, err := os.Open(*param_ifile)
 		if err != nil {
 			//Do something
 			fmt.Println(err)
 			os.Exit(5)
 		}
-		// TODO: improve here to handle multiline
-		logs = strings.Split(string(content), "\n")
+		// TODO: improve here to handle
+		scanner := bufio.NewScanner(inFile)
+		if *param_multiline {
+			scanner.Split(multiLineSplit)
+		}
+		for scanner.Scan(){
+			l := scanner.Text()
+			if *param_ltrim > 0 {
+				spl := strings.SplitN(l, string(' '), *param_ltrim+1)
+				logs = append(logs, spl[len(spl)-1])
+			} else {
+				logs = append(logs, scanner.Text())
+			}
+		}
 	}
 
 	if len(*param_ofile) != 0 {
 		// logging out to a file
-		var format = logging.MustStringFormatter(`%{time:2006-01-02T15:04:05.999:00}	%{program} %{level:.8s} %{message}`)
+		var format = logging.MustStringFormatter(`%{time:2006-01-02T15:04:05.999:00} %{message}`)
 		outputfile, err := os.OpenFile(*param_ofile, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0644)
 		if err != nil {
 			fmt.Println(err)
@@ -143,7 +183,7 @@ func main() {
 	}
 
 	tempo, _ := time.ParseDuration(*param_tempo)
-	fmt.Printf("tempo: %s\n", tempo)
+	fmt.Printf("tempo: %s\nnum: %d\n", tempo, *param_num)
 	send_over_time(*param_num, tempo, logs)
 
 }
