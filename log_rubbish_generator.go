@@ -90,7 +90,7 @@ func send_over_time(num_msgs int, dur time.Duration, text []string) {
 
 func usage() {
 
-	fmt.Printf("Usage: %s [--time=<duration>] [--num=<number>] [--file=<input_file>] [--ofile=<output_file>]\n", os.Args[0])
+	fmt.Printf("Usage: %s [--time=<duration>] [--num=<number>] [--ifile=<file>] [--ofile=<file>] [--ml] [--ltrim=<number>]\n", os.Args[0])
 	flag.PrintDefaults()
 	os.Exit(1)
 }
