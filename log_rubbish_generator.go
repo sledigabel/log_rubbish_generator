@@ -37,7 +37,7 @@ func pick_log(blah []string) string {
 	return blah[r.Int()%len(blah)]
 }
 
-func send_over_time(num_msgs int, dur time.Duration, text []string) {
+func send_over_time(num_msgs int, dur time.Duration, text []string, debug bool) {
 
 	total_in_sec := int(dur.Seconds()) // total num of seconds for the duration
 	interval_period := 1               // in seconds
@@ -49,13 +49,16 @@ func send_over_time(num_msgs int, dur time.Duration, text []string) {
 	for i := 1; num_msgs*interval_period/total_in_sec < 1; i++ {
 		interval_period = i * 5 // we increase by 30s every time we find the interval is too short.
 	}
-	num_msgs_interval = num_msgs * interval_period / total_in_sec
 
-	// now we have a rate per period, we can now start sending!
-	if interval_period != 1 {
-		fmt.Printf("rate = %d msgs/%d seconds\n", num_msgs_interval, interval_period)
-	} else {
-		fmt.Printf("rate = %d msgs/s\n", num_msgs_interval)
+	num_msgs_interval = num_msgs * interval_period / total_in_sec
+	if debug {
+		fmt.Printf("tempo: %s\nnum: %d\n", dur, num_msgs)
+		// now we have a rate per period, we can now start sending!
+		if interval_period != 1 {
+			fmt.Printf("rate = %d msgs/%d seconds\n", num_msgs_interval, interval_period, debug)
+		} else {
+			fmt.Printf("rate = %d msgs/s\n", num_msgs_interval)
+		}
 	}
 
 	// start the tick now!
@@ -75,8 +78,10 @@ func send_over_time(num_msgs int, dur time.Duration, text []string) {
 		}
 		// pretty progress bar
 		// TODO: make it optional
-		progress = int(20 * count / num_msgs)
-		fmt.Printf("\r[%s%s] --\t%s\t-- %d", strings.Repeat("*", progress), strings.Repeat(" ", 20-progress), strings.Split(time.Since(start_time).String(), ".")[0]+"s", count)
+		if debug{
+			progress = int(20 * count / num_msgs)
+			fmt.Printf("\r[%s%s] --\t%s\t-- %d", strings.Repeat("*", progress), strings.Repeat(" ", 20-progress), strings.Split(time.Since(start_time).String(), ".")[0]+"s", count)
+		}
 		// now we just wait
 		// TODO: Make it better, this is ugly
 		for int(time.Since(in_between).Seconds()) < interval_period {
@@ -84,13 +89,14 @@ func send_over_time(num_msgs int, dur time.Duration, text []string) {
 			time.Sleep(time.Millisecond * 100)
 		}
 	}
-	fmt.Printf("Sent %d messages in %s\n", num_msgs, time.Since(start_time).String())
+	if debug {
+		fmt.Printf("Sent %d messages in %s\n", num_msgs, time.Since(start_time).String())
+	}
 
 }
 
 func usage() {
-
-	fmt.Printf("Usage: %s [--time=<duration>] [--num=<number>] [--ifile=<file>] [--ofile=<file>] [--ml] [--ltrim=<number>]\n", os.Args[0])
+	fmt.Printf("Usage: %s [--time=<duration>] [--num=<number>] [--ifile=<file>] [--ofile=<file>] [--ml] [--ltrim=<number>] [--]\n", os.Args[0])
 	flag.PrintDefaults()
 	os.Exit(1)
 }
@@ -126,11 +132,13 @@ func main() {
 	param_ofile := flag.String("ofile", "", "Output file to send logs to")
 	param_multiline := flag.Bool("ml", false, "Reads as multiline")
 	param_ltrim := flag.Int("ltrim", 0, "Number of fields to trim on the left")
+	param_progress := flag.Bool("progress", true, "Display progress bar and summary")
 
 	flag.Usage = usage
 	flag.Parse()
 
 	var logs []string
+	var is_debug bool = *param_progress
 
 	if *param_help {
 		usage()
@@ -183,7 +191,6 @@ func main() {
 	}
 
 	tempo, _ := time.ParseDuration(*param_tempo)
-	fmt.Printf("tempo: %s\nnum: %d\n", tempo, *param_num)
-	send_over_time(*param_num, tempo, logs)
+	send_over_time(*param_num, tempo, logs, is_debug)
 
 }
